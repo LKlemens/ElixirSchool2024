@@ -1,0 +1,228 @@
+# Flow control
+
+## Match operator =
+
+Matching operator = is used in one of 3 ways:
+
+* to assign value to variable
+* to check if the value matches given pattern
+* to extract data from more complex structures
+
+see more [here](https://elixir-lang.org/getting-started/pattern-matching.html).
+
+```elixir
+x = 1
+x
+# x = 2
+```
+
+```elixir
+# {:ok, value} = {:ok, :success}
+# value
+```
+
+```elixir
+{:error, %{:reason => reason}} = {:error, %{:reason => "something went wong", :code => 123}}
+reason
+```
+
+## If / unless
+
+```elixir
+if true do
+  "This works!"
+end
+
+# unless true do
+#  "This will never be seen"
+# end
+
+# unless false do
+#   "This will be seen 
+# end
+
+# if nil do
+#  "This won't be seen"
+# else
+#  "This will"
+# end
+```
+
+## Case
+
+```elixir
+earnings = 12
+
+special_value = 12
+
+case earnings do
+  10 -> "you earn average salary"
+  ## pinning operator
+  ^special_value -> "you earn #{special_value}"
+  sallary when sallary > 13 -> "you are too rich"
+  _ -> "you are underpaied"
+end
+```
+
+## Cond
+
+`case` is useful when you need to match against different values. However, in many circumstances, we want to check different conditions and find the first one that does not evaluate to `nil` or `false`. If all of the conditions return nil or false, an error (`CondClauseError`) is raised. For this reason, it may be necessary to add a final condition, equal to `true`, which will always match
+
+```elixir
+cond do
+  2 + 2 == 5 ->
+    "This will not be true"
+
+  2 * 2 == 3 ->
+    "Nor this"
+
+  1 + 1 == 2 ->
+    "But this will"
+end
+```
+
+```elixir
+cond do
+  2 + 2 == 5 ->
+    "This is never true"
+
+  2 * 2 == 3 ->
+    "Nor this"
+
+  true ->
+    "This is always true (equivalent to else)"
+end
+```
+
+## Anonymous functions
+
+An anonymous function has no name. They allow us to store and pass executable code around as it was an integer or string. They are delimited by the keywords `fn` and `end`
+
+```elixir
+add = fn a, b -> a + b end
+add.(2, 3)
+```
+
+```elixir
+# shorthand notation
+add2 = &(&1 + &2)
+add2.(2, 3)
+```
+
+```elixir
+# Pattern meatching in annonimous functions:
+count = fn
+  1 -> :one
+  2 -> :two
+  _ -> :many
+end
+
+[
+  count.(1),
+  count.(2),
+  count.(3),
+  count.(4)
+]
+```
+
+## Pipe operator
+
+The `|>` symbol used in the snippet above is the pipe operator: it takes the output from the expression on its left side and passes it as the first argument to the function call on its right side. It’s similar to the Unix `|` operator. Its purpose is to highlight the data being transformed by a series of functions.
+
+```elixir
+# add.(add(1, 2), 3)
+1
+|> add.(2)
+|> add.(3)
+```
+
+## Higher order functions
+
+Functions that accept orther functions as arguments. Read more [here](https://serokell.io/blog/elixir-for-beginners#%E2%9E%A1%EF%B8%8F-higher-order-functions)
+
+```elixir
+divices = [
+  %{:os => :mac, :processor => :intel, :type => :laptop},
+  %{:os => :mac, :processor => :intel, :type => :phone},
+  %{:os => :windows, :processor => :intel, :type => :laptop},
+  %{:os => :android, :processor => :intel, :type => :phone},
+  %{:os => :windows, :processor => :intel, :type => :phone}
+]
+
+## I want to know only what type of divices are used  
+divices
+|> Enum.map(fn %{:type => type} -> type end)
+|> Enum.uniq()
+
+## I want to only see the windows running divices
+# divices |>
+# Enum.filter(fn(%{:os => :windows}) -> true; _ -> false end)
+```
+
+## Modules
+
+When writing Elixir code we use functions. And we put group of functions into modules.
+
+There are 2 types of functions that we put inside modules:
+
+* public - can only be accessed from anywhere in the code, defined with `def`
+* private - can only be accessed within module, defined with `defp`
+
+Function alway return last value it evaluated
+
+```elixir
+defmodule Math.Examples.Fib do
+  def fib(0), do: 1
+  def fib(1), do: 1
+
+  def fib(n) do
+    fib(n - 1) + fib(n - 2)
+  end
+
+  def seq_fib(max), do: piv_fib(max, 0, 1, 0)
+
+  defp piv_fib(max, counter, current, previous) when counter >= max, do: current
+
+  ## Handling the warining:
+  ## warning: variable "previous" is unused (if the variable is not meant to be used, prefix it with an underscore)
+  ## first_classes/basic_constructs.livemd#cell:10: Fibbonaci.Sequence.piv_fib/4
+
+  # defp piv_fib(max, counter, current, _previous) when counter > max, do: current
+  # defp piv_fib(max, counter, current, _) when counter > max, do: current
+
+  defp piv_fib(max, counter, current, previous) do
+    piv_fib(max, counter + 1, current + previous, current)
+  end
+end
+
+defmodule Math.Examples.Add do
+  def add(a, b) do
+    a + b
+    ## When you uncomment `:ok` it will be returned instead of a + b
+    # :ok
+  end
+end
+```
+
+```elixir
+{[
+   Math.Examples.Fib.fib(0),
+   Math.Examples.Fib.fib(1),
+   Math.Examples.Fib.fib(2),
+   Math.Examples.Fib.fib(3),
+   Math.Examples.Fib.fib(4),
+   Math.Examples.Fib.fib(5)
+ ],
+ [
+   Math.Examples.Fib.seq_fib(0),
+   Math.Examples.Fib.seq_fib(1),
+   Math.Examples.Fib.seq_fib(2),
+   Math.Examples.Fib.seq_fib(3),
+   Math.Examples.Fib.seq_fib(4),
+   Math.Examples.Fib.seq_fib(5)
+ ]}
+```
+
+```elixir
+Math.Examples.Add.add(2, 3)
+```

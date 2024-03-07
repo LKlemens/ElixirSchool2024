@@ -1,0 +1,87 @@
+# Processes DIY
+
+## Echo process
+
+Write code that will spawn another process, register this process under a given name (eg `:echo`) and make it reply whatever it receivers back to the sender.
+
+Hint 0 - rememeber to register the echo process first.
+
+Hint 1 - use recursion for looping.
+
+Hint 2 - when a message is sent the sender process is unknown to the receiver process, therefore do not forget to include sender's PID in the message.
+
+```elixir
+defmodule Echo do
+  def spawn_echo_process do
+    ## Add spawning code here.
+    Process.sleep(1000)
+  end
+end
+```
+
+```elixir
+spawn(Echo, :spawn_echo_process, [])
+
+messages = [:first, {:second, :message}, %{"third" => 1}]
+
+for msg <- messages do
+  send(:echo, msg)
+
+  receive do
+    ^msg -> :ok
+    msg -> {:error, "Unexpected message #{inspect(msg)}"}
+  after
+    100 -> :timeout
+  end
+end
+```
+
+## Counter process
+
+Implement a process that will work as a counter. It allows for incremenitng 1, incremating and decrementing by any numer or return current value.
+
+Hint 0 - use recursion for looping.
+
+Hint 1 - use recursive function's argument to store the state.
+
+Hint 2 - use asyncronious comunication to update counter and syncronious communication to retrive current counter's value.
+
+Hint 3 - think about possible race condition that may occure in your system.
+
+```elixir
+
+```
+
+## Warden
+
+Implement a process that will start and watch counter process, if the counter crushes it the warden will restart it. With an inintial value.
+
+Hint 1 - use monitor or link with setting process flag `trap_exit`.
+
+```elixir
+
+```
+
+## The ring
+
+One Ring to rule them all,
+One Ring to find them,
+One Ring to bring them all and in the darkness bind them.
+
+Implement a ring of n (where n is positive integer > 2) processes,
+The 1st process is forwarding a message to the second one,
+the second one to the 3ed one etc
+
+```mermaid
+graph LR;
+      1 --> 2;
+      2 --> 3;
+      3 --> ...;
+      ... --> n;
+      n --> 1;
+
+```
+
+```elixir
+
+```

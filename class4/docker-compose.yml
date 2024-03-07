@@ -1,0 +1,25 @@
+version: '3.2'
+
+services:
+  rabbitmq:
+    image: docker.io/bitnami/rabbitmq:3.9
+    ports:
+    # This port is to exposes RabbitMQ's EPMD
+    # it is not needed for out purposes
+    # and it might colide with eg Erlang Language Server or your project
+    # Lear more: https://www.erlang.org/doc/man/epmd.html
+      # - '4369:4369'  
+      - '5551:5551'
+      - '5552:5552'
+      - '5672:5672'
+      - '25672:25672'
+      - '15672:15672'
+    environment:
+      - RABBITMQ_SECURE_PASSWORD=yes
+      - RABBITMQ_DEFAULT_USER=test
+      - RABBITMQ_DEFAULT_PASS=test
+    volumes:
+      - 'rabbitmq_data:/bitnami/rabbitmq/mnesia'
+volumes:
+  rabbitmq_data:
+    driver: local

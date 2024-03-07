@@ -1,0 +1,393 @@
+# Processes in Elixir
+
+## Processes
+
+Erlang and Elixir processes are:
+
+* lightweight (grow and shrink dynamically)
+* with small memory footprint,
+* fast to create and terminate,
+* the scheduling overhead is low.
+
+The theory behind a process is well explained in this blog post: https://www.erlang-solutions.com/blog/understanding-processes-for-elixir-developers/
+
+## Staring new process
+
+Use function `self/0` to determine what is PID (process ID) of current process.
+
+```elixir
+self()
+```
+
+Get basic info about process using Erlang function `process_info/0`.
+
+```elixir
+self() |> :erlang.process_info()
+```
+
+Staring a new process can be done using `spawn/1` or `spawn/3` function.After spawning, new process is completly unrelated to the process was spawned by. There is no parent-child relation in oposition what you can see eg in Linux OS.
+
+```elixir
+IO.inspect(self(), label: "I am parent process")
+spawn(fn -> IO.inspect(self(), label: "I am child process") end)
+```
+
+```elixir
+defmodule PidPrinter do
+  def print_my_pid, do: IO.inspect(self(), label: "I am child process")
+
+  def print_my_pid(extra), do: IO.inspect({self(), extra}, label: "I am child process")
+end
+```
+
+```elixir
+IO.inspect(self(), label: "I am parent process")
+spawn(&PidPrinter.print_my_pid/0)
+spawn(PidPrinter, :print_my_pid, ["XD"])
+```
+
+## Comunication
+
+Processes do not share memeory are independent and **only** comunicate via messages. All comunication is based on asyncronous communication.
+
+```elixir
+# sending message
+send(self(), "Hello")
+
+# receiving message
+receive do
+  msg -> IO.inspect(msg, label: "I have received")
+end
+```
+
+```elixir
+# self() |> :erlang.process_info(:message_queue_len) |> IO.inspect()
+# send(self(), {:question, "How are you?"})
+# self() |> :erlang.process_info(:message_queue_len) |> IO.inspect()
+# receive do
+#   {:greetings, content} -> IO.inspect(content, label: "I have received")
+# end
+# ## This will neve happen
+# self() |> :erlang.process_info(:message_queue_len) |> IO.inspect()
+# ## comment out after showing
+```
+
+After the previous block was executed there are some trash messages left in our main process. We can flush them by running following function:
+
+```elixir
+flush_fun = fn fun ->
+  receive do
+    msg ->
+      IO.inspect(msg)
+      fun.(fun)
+  after
+    0 ->
+      IO.inspect("flushing is done")
+      :ok
+  end
+end
+
+flush_fun.(flush_fun)
+```
+
+When selectivly waiting the message may never arrive, therefore timeout part is added to the receive block:
+
+```elixir
+send(self(), {:question, "How are you?"})
+
+receive do
+  {:greetings, content} -> IO.inspect(content, label: "I have received")
+after
+  # timeout is in miliseconds
+  5000 -> IO.inspect(:timeout, label: "I have received")
+end
+```
+
+We can use this block to implement our own `Process.sleep/1` function. And suprrise this is how it is done in the OTP itself: https://github.com/erlang/otp/blob/896518d196cd81ba26cb084827957a93b90220fb/lib/stdlib/src/timer.erl#L237
+
+```elixir
+sleep_fun = fn time ->
+  receive do
+  after
+    time -> :ok
+  end
+end
+
+sleep_fun.(3000)
+```
+
+We can use selective receives to ensure that messages are consumed in particular order:
+
+```elixir
+send(self(), {:question, "How are you?"})
+Process.sleep(5000)
+send(self(), {:greetings, "Hello"})
+
+receive do
+  {:greetings, content} ->
+    IO.inspect(content, label: "I have received")
+end
+
+receive do
+  {:question, question} ->
+    IO.inspect(question, label: "I have received")
+end
+
+# receive do
+#   {:greetings, content} ->
+#     IO.inspect(content, label: "I have received")
+#   {:question, question} ->
+#     IO.inspect(question, label: "I have received")
+# end
+# flush_fun.(flush_fun)
+```
+
+### Naming processes
+
+Processe can be named so that we do not have to remember thair PIDs and we can reffer to them from anywhere in BEAM (Erlang VM).
+
+```elixir
+spawn(fn ->
+  Process.register(self(), :krzys)
+
+  receive do
+    msg -> IO.inspect(msg, label: "Krzys received")
+  end
+end)
+
+## There is a race condition between process `:krzys` registering 
+## and current process looking up its pid based on it's name.
+## Comment out next line to (possibly) see that.
+Process.sleep(1000)
+
+send(:krzys, "Hello")
+```
+
+### The big bang theory example
+
+<!-- livebook:{"break_markdown":true} -->
+
+Let's model how the gossip is going through the with the big bang theory characters.
+
+```mermaid
+graph TD;
+  penny-->bernadete;
+  bernadete-->howard;
+  howard-->raj;
+  raj-->lenard;
+```
+
+```elixir
+tell_next_fun = fn next_person ->
+  receive do
+    recived_gossip ->
+      send(next_person, recived_gossip)
+  end
+end
+
+lenard =
+  spawn(fn ->
+    receive do
+      msg -> IO.inspect(msg, label: "Lenard received")
+    end
+  end)
+
+raj = spawn(fn -> tell_next_fun.(lenard) end)
+howard = spawn(fn -> tell_next_fun.(raj) end)
+bernadete = spawn(fn -> tell_next_fun.(howard) end)
+
+gossip = "Lenard bought the new Batman comix"
+
+penny =
+  spawn(fn ->
+    Process.sleep(1000)
+    send(bernadete, gossip)
+  end)
+
+[
+  {:lenard, lenard},
+  {:raj, raj},
+  {:howard, howard},
+  {:penny, penny},
+  {:bernadete, bernadete}
+] |> IO.inspect()
+
+## Tracing (like debugging but better)
+:dbg.tracer(:process, {&:dbg.dhandler/2, :standard_io})
+
+for pid <- [lenard, raj, howard, bernadete, penny] do
+  :dbg.p(pid, [:m])
+end
+```
+
+## Monitors
+
+Monitor is a way of obsering how some other is process doing. When process A monitors process B, and process B crushes, process A gets notified by receiving a message: `{'DOWN', ref, :process, pidB, reason}`. Monitors are unidrectional which means that if A monitors B, B does not know it is monitored.
+
+```elixir
+spawn(fn ->
+  # spawn_monitor(fn ->
+  Process.register(self(), B)
+
+  receive do
+    :crash -> 1 = 2
+    :die_normally -> :ok
+  end
+end)
+```
+
+Process can die in either normal or unnormal way. Normal is when it runs out of code do execute, and unnormal is when is crashses, eg by trying to match `2` to value `1`.
+
+```elixir
+## Current process is emulating A process
+flush_fun.(flush_fun)
+
+Process.monitor(B)
+send(B, :crash)
+
+receive do
+  msg -> IO.inspect(msg, label: "A received")
+after
+  0 -> :ok
+end
+
+# Process.monitor(B)
+# send(B, :die_normally)
+# receive do
+#   msg -> IO.inspect(msg, label: "A received")
+#   after 1000 -> :ok
+# end
+```
+
+## Links
+
+When two processes can be linked to each other. If one of the participants of a link terminates, it will send an exit signal to the other participant. The exit signal will contain the exit reason of the terminated participant. Links are bidirectional.
+
+```elixir
+## Cleanup
+for proc <- [A, B, C] do
+  proc
+  |> Process.whereis()
+  |> (fn
+        nil -> :ok
+        pid -> Process.exit(pid, :kill)
+      end).()
+end
+```
+
+```elixir
+IO.inspect(self(), label: "I am")
+
+a =
+  spawn(fn ->
+    Process.register(self(), A)
+    IO.inspect({A, self()}, label: "I am")
+
+    receive do
+      :crash -> 1 = 2
+      :die_normally -> :ok
+    end
+  end)
+
+Process.sleep(100)
+
+b =
+  spawn(fn ->
+    Process.register(self(), B)
+    IO.inspect({B, self()}, label: "I am")
+
+    A
+    |> Process.whereis()
+    |> Process.link()
+
+    receive do
+      _ -> :ok
+    end
+  end)
+
+# Process.sleep(100)
+# c = spawn(fn ->
+#   Process.register(self(), C)
+#   IO.inspect({C, self()}, label: "I am")
+#   B
+#   |> Process.whereis()
+#   |> Process.link()
+#   receive do
+#     _ -> :ok
+#   end
+# end)
+
+Process.sleep(100)
+
+send(A, :crash)
+# send(A, :die_normally)
+
+Process.sleep(100)
+
+IO.inspect(:erlang.process_info(a), label: "Final A info")
+IO.inspect(:erlang.process_info(b), label: "Final B info")
+# IO.inspect(:erlang.process_info(c), label: "Final C info")
+```
+
+There is an option set a spetial process flag to trap exits. When `trap_exit` process flag is set to true, instread of receiving **exit signal** a process receives a message:
+
+```elixir
+## Cleanup
+for proc <- [A, B] do
+  proc
+  |> Process.whereis()
+  |> (fn
+        nil -> :ok
+        pid -> Process.exit(pid, :kill)
+      end).()
+end
+```
+
+```elixir
+IO.inspect(self(), label: "I am")
+
+a =
+  spawn(fn ->
+    Process.register(self(), A)
+    IO.inspect({A, self()}, label: "I am")
+
+    receive do
+      :crash -> 1 = 2
+      :die_normally -> :ok
+    end
+  end)
+
+Process.sleep(100)
+
+b =
+  spawn(fn ->
+    Process.register(self(), B)
+    Process.flag(:trap_exit, true)
+    IO.inspect({B, self()}, label: "I am")
+
+    A
+    |> Process.whereis()
+    |> Process.link()
+
+    receive do
+      msg -> IO.inspect(msg, label: "The trap exit messge")
+    end
+
+    receive do
+      _ -> :ok
+    end
+  end)
+
+Process.sleep(100)
+
+send(A, :crash)
+
+Process.sleep(100)
+
+IO.inspect(:erlang.process_info(a), label: "Final A info")
+IO.inspect(:erlang.process_info(b), label: "Final B info")
+```
+
+```elixir
+# spawn_link(...)
+```

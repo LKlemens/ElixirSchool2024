@@ -1,0 +1,106 @@
+# Exercises
+
+## FizzBuzz
+
+Write a function that returns the numbers from 1 to `n`. But for multiples of:
+
+* three replaces a number with an atom `:fizz` instead of the number
+* five replaces a number with an atom `:buzz`
+* both three and five replaces a number with an atom `:fizzbuzz`.
+
+Tip: see [How to use div/2 and/or rem/2?](https://elixir-lang.org/getting-started/basic-types.html#basic-arithmetic)
+
+```elixir
+defmodule FizzBuzz do
+  def fizzbuzz(n) do
+    []
+  end
+end
+```
+
+```elixir
+[] = FizzBuzz.fizzbuzz(0)
+[1] = FizzBuzz.fizzbuzz(1)
+[1, 2] = FizzBuzz.fizzbuzz(2)
+[1, 2, :fizz] = FizzBuzz.fizzbuzz(3)
+
+[
+  1,
+  2,
+  :fizz,
+  4,
+  :buzz,
+  :fizz,
+  7,
+  8,
+  :fizz,
+  :buzz,
+  11,
+  :fizz,
+  13,
+  14,
+  :fizzbuzz,
+  16,
+  17,
+  :fizz,
+  19,
+  :buzz,
+  :fizz,
+  22,
+  23,
+  :fizz,
+  :buzz,
+  26,
+  :fizz,
+  28,
+  29,
+  :fizzbuzz,
+  31
+] = FizzBuzz.fizzbuzz(31)
+```
+
+## Modules and Functions - Sum
+
+Write functions `sum(n)` that uses recursion to calculate the sum of integers from 1 to n.
+
+```elixir
+defmodule Recursive do
+  def sum(n) do
+    # Your code here
+  end
+end
+```
+
+```elixir
+6 = Recursive.sum(3)
+```
+
+## Pipe operator - Scrabble Score
+
+Given a word, compute the Scrabble score of that word.
+
+### Letter Values
+
+| Letter                       | Value |
+| ---------------------------- | ----- |
+| A, E, I, O, U, L, N, R, S, T | 1     |
+| D, G                         | 2     |
+| B, C, M, P                   | 3     |
+| F, H, V, W, Y                | 4     |
+| K                            | 5     |
+| J, X                         | 8     |
+| Q, Z                         | 10    |
+
+Tip: You can calculate score for each group in separate function and pipe them together
+
+```elixir
+defmodule Scrabble do
+  def calculate_score(word) do
+    # Your code here
+  end
+end
+```
+
+```elixir
+14 = Scrabble.calculate_score("cabbage")
+```
