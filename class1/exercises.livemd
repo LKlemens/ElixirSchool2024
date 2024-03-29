@@ -1,5 +1,23 @@
 # Exercises
 
+## Modules and Functions - Sum
+
+Write functions `sum(n)` that uses recursion to calculate the sum of integers from 1 to n.
+
+```elixir
+defmodule Recursive do
+  def sum(_n) do
+    # Your code here
+  end
+end
+```
+
+```elixir
+1 = Recursive.sum(1)
+6 = Recursive.sum(3)
+10 = Recursive.sum(4)
+```
+
 ## FizzBuzz
 
 Write a function that returns the numbers from 1 to `n`. But for multiples of:
@@ -12,8 +30,8 @@ Tip: see [How to use div/2 and/or rem/2?](https://elixir-lang.org/getting-starte
 
 ```elixir
 defmodule FizzBuzz do
-  def fizzbuzz(n) do
-    []
+  def fizzbuzz(_n) do
+    # Your code here
   end
 end
 ```
@@ -59,23 +77,7 @@ end
 ] = FizzBuzz.fizzbuzz(31)
 ```
 
-## Modules and Functions - Sum
-
-Write functions `sum(n)` that uses recursion to calculate the sum of integers from 1 to n.
-
-```elixir
-defmodule Recursive do
-  def sum(n) do
-    # Your code here
-  end
-end
-```
-
-```elixir
-6 = Recursive.sum(3)
-```
-
-## Pipe operator - Scrabble Score
+## Scrabble Score
 
 Given a word, compute the Scrabble score of that word.
 
@@ -91,16 +93,18 @@ Given a word, compute the Scrabble score of that word.
 | J, X                         | 8     |
 | Q, Z                         | 10    |
 
-Tip: You can calculate score for each group in separate function and pipe them together
+Tip: You may find [String.graphemes/1](https://hexdocs.pm/elixir/String.html#graphemes/1) useful.
 
 ```elixir
 defmodule Scrabble do
-  def calculate_score(word) do
+  def calculate_score(_word) do
     # Your code here
   end
 end
 ```
 
 ```elixir
-14 = Scrabble.calculate_score("cabbage")
+13 = Scrabble.calculate_score("elixir")
+2 = Scrabble.calculate_score("is")
+6 = Scrabble.calculate_score("fun")
 ```
