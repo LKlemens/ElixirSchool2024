@@ -5,20 +5,32 @@
 Matching operator = is used in one of 3 ways:
 
 * to assign value to variable
-* to check if the value matches given pattern
+* to check if the value matches given pattern, pin operator `^` is useful when you want to check pattern without reassigning variable
 * to extract data from more complex structures
 
 see more [here](https://elixir-lang.org/getting-started/pattern-matching.html).
 
 ```elixir
 x = 1
-x
 # x = 2
+# x
+# ^x = 2
 ```
 
 ```elixir
-# {:ok, value} = {:ok, :success}
-# value
+{:ok, value} = {:ok, :success}
+value
+```
+
+```elixir
+list = [1, 2, 3]
+# [head | tail] = list
+# head
+# tail
+# [^head, 2, b] = list
+# b
+# [a, b] = list
+# [] = list
 ```
 
 ```elixir
@@ -30,37 +42,37 @@ reason
 
 ```elixir
 if true do
-  "This works!"
+  IO.puts("This works!")
 end
 
 # unless true do
-#  "This will never be seen"
+#  IO.puts("This will never be seen")
 # end
 
 # unless false do
-#   "This will be seen 
+#   IO.puts("This will be seen")
 # end
 
 # if nil do
-#  "This won't be seen"
+#  IO.puts("This won't be seen")
 # else
-#  "This will"
+#  IO.puts("This will")
 # end
 ```
 
 ## Case
 
 ```elixir
-earnings = 12
+earnings = 10
 
 special_value = 12
 
 case earnings do
   10 -> "you earn average salary"
-  ## pinning operator
+  # pin operator
   ^special_value -> "you earn #{special_value}"
-  sallary when sallary > 13 -> "you are too rich"
-  _ -> "you are underpaied"
+  salary when salary > 12 -> "you earn #{salary} you are too rich"
+  _ -> "you are underpaid"
 end
 ```
 
@@ -96,11 +108,13 @@ end
 
 ## Anonymous functions
 
-An anonymous function has no name. They allow us to store and pass executable code around as it was an integer or string. They are delimited by the keywords `fn` and `end`
+An anonymous function has no name. They allow us to store and pass executable code around as it was an integer or string. They are delimited by the keywords `fn` and `end`. To invoke anonymous funtion use sytnax `fun.(args...)`
 
 ```elixir
 add = fn a, b -> a + b end
 add.(2, 3)
+# add_two = fn a -> add.(a, 2) end
+# add_two.(5)
 ```
 
 ```elixir
@@ -130,10 +144,10 @@ end
 The `|>` symbol used in the snippet above is the pipe operator: it takes the output from the expression on its left side and passes it as the first argument to the function call on its right side. It’s similar to the Unix `|` operator. Its purpose is to highlight the data being transformed by a series of functions.
 
 ```elixir
-# add.(add(1, 2), 3)
-1
-|> add.(2)
-|> add.(3)
+add.(add.(1, 2), 3)
+# 1
+# |> add.(2)
+# |> add.(3)
 ```
 
 ## Higher order functions
@@ -141,7 +155,7 @@ The `|>` symbol used in the snippet above is the pipe operator: it takes the out
 Functions that accept orther functions as arguments. Read more [here](https://serokell.io/blog/elixir-for-beginners#%E2%9E%A1%EF%B8%8F-higher-order-functions)
 
 ```elixir
-divices = [
+devices = [
   %{:os => :mac, :processor => :intel, :type => :laptop},
   %{:os => :mac, :processor => :intel, :type => :phone},
   %{:os => :windows, :processor => :intel, :type => :laptop},
@@ -149,15 +163,20 @@ divices = [
   %{:os => :windows, :processor => :intel, :type => :phone}
 ]
 
-## I want to know only what type of divices are used  
-divices
-|> Enum.map(fn %{:type => type} -> type end)
-|> Enum.uniq()
+## I want to know what type of divices are used  
+# devices
+# |> Enum.map(fn %{:type => type} -> type end)
+# |> Enum.uniq()
 
-## I want to only see the windows running divices
-# divices |>
-# Enum.filter(fn(%{:os => :windows}) -> true; _ -> false end)
+## I want to see the windows running divices
+# devices
+# |> Enum.filter(fn(%{:os => :windows}) -> true; _ -> false end)
 ```
+
+## See also
+
+* [Comprehensions](https://hexdocs.pm/elixir/comprehensions.html)
+* [Recursion](https://hexdocs.pm/elixir/recursion.html)
 
 ## Modules
 
@@ -168,7 +187,7 @@ There are 2 types of functions that we put inside modules:
 * public - can only be accessed from anywhere in the code, defined with `def`
 * private - can only be accessed within module, defined with `defp`
 
-Function alway return last value it evaluated
+Function always return last value it evaluated
 
 ```elixir
 defmodule Math.Examples.Fib do
@@ -185,7 +204,7 @@ defmodule Math.Examples.Fib do
 
   ## Handling the warining:
   ## warning: variable "previous" is unused (if the variable is not meant to be used, prefix it with an underscore)
-  ## first_classes/basic_constructs.livemd#cell:10: Fibbonaci.Sequence.piv_fib/4
+  ## first_classes/basic_constructs.livemd#cell:11: Fibbonaci.Sequence.piv_fib/4
 
   # defp piv_fib(max, counter, current, _previous) when counter > max, do: current
   # defp piv_fib(max, counter, current, _) when counter > max, do: current
