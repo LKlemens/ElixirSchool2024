@@ -17,7 +17,7 @@ You can launch Livebook instance using https://fly.io/launch/livebook and follow
 Alternately you can run Livebook instance in a docker container on your local machine:
 
 ```bash
-docker run -p 8080:8080 -p 8081:8081 --pull always -v $(pwd):/data livebook/livebook
+docker run -p 8080:8080 -p 8081:8081 --pull always -v $(pwd):/data ghcr.io/livebook-dev/livebook
 ```
 
 or following the instructions from: https://github.com/livebook-dev/livebook#docker
