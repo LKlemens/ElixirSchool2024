@@ -29,7 +29,8 @@ Staring a new process can be done using `spawn/1` or `spawn/3` function.After sp
 
 ```elixir
 IO.inspect(self(), label: "I am parent process")
-spawn(fn -> IO.inspect(self(), label: "I am child process") end)
+execute_fun = fn -> IO.inspect(self(), label: "I am child process") end
+spawn(execute_fun)
 ```
 
 ```elixir
@@ -48,7 +49,7 @@ spawn(PidPrinter, :print_my_pid, ["XD"])
 
 ## Comunication
 
-Processes do not share memeory are independent and **only** comunicate via messages. All comunication is based on asyncronous communication.
+Processes do not share memeory, they are independent and **only** comunicate via messages. All comunication is based on asyncronous communication.
 
 ```elixir
 # sending message
@@ -99,7 +100,7 @@ receive do
   {:greetings, content} -> IO.inspect(content, label: "I have received")
 after
   # timeout is in miliseconds
-  5000 -> IO.inspect(:timeout, label: "I have received")
+  3000 -> IO.inspect(:timeout, label: "I have received")
 end
 ```
 
@@ -120,7 +121,7 @@ We can use selective receives to ensure that messages are consumed in particular
 
 ```elixir
 send(self(), {:question, "How are you?"})
-Process.sleep(5000)
+Process.sleep(3000)
 send(self(), {:greetings, "Hello"})
 
 receive do
@@ -147,13 +148,15 @@ end
 Processe can be named so that we do not have to remember thair PIDs and we can reffer to them from anywhere in BEAM (Erlang VM).
 
 ```elixir
-spawn(fn ->
+execute_fun = fn ->
   Process.register(self(), :krzys)
 
   receive do
     msg -> IO.inspect(msg, label: "Krzys received")
   end
-end)
+end
+
+spawn(execute_fun)
 
 ## There is a race condition between process `:krzys` registering 
 ## and current process looking up its pid based on it's name.
@@ -210,7 +213,8 @@ penny =
   {:howard, howard},
   {:penny, penny},
   {:bernadete, bernadete}
-] |> IO.inspect()
+]
+|> IO.inspect()
 
 ## Tracing (like debugging but better)
 :dbg.tracer(:process, {&:dbg.dhandler/2, :standard_io})
@@ -225,15 +229,29 @@ end
 Monitor is a way of obsering how some other is process doing. When process A monitors process B, and process B crushes, process A gets notified by receiving a message: `{'DOWN', ref, :process, pidB, reason}`. Monitors are unidrectional which means that if A monitors B, B does not know it is monitored.
 
 ```elixir
-spawn(fn ->
-  # spawn_monitor(fn ->
-  Process.register(self(), B)
+## Cleanup
+for proc <- [A, B, C] do
+  proc
+  |> Process.whereis()
+  |> (fn
+        nil -> :ok
+        pid -> Process.exit(pid, :kill)
+      end).()
+end
+```
 
-  receive do
-    :crash -> 1 = 2
-    :die_normally -> :ok
-  end
-end)
+```elixir
+pidB =
+  spawn(fn ->
+    Process.register(self(), B)
+
+    receive do
+      :crash -> 1 = 2
+      :die_normally -> :ok
+    end
+  end)
+
+Process.alive?(pidB)
 ```
 
 Process can die in either normal or unnormal way. Normal is when it runs out of code do execute, and unnormal is when is crashses, eg by trying to match `2` to value `1`.
@@ -262,18 +280,6 @@ end
 ## Links
 
 When two processes can be linked to each other. If one of the participants of a link terminates, it will send an exit signal to the other participant. The exit signal will contain the exit reason of the terminated participant. Links are bidirectional.
-
-```elixir
-## Cleanup
-for proc <- [A, B, C] do
-  proc
-  |> Process.whereis()
-  |> (fn
-        nil -> :ok
-        pid -> Process.exit(pid, :kill)
-      end).()
-end
-```
 
 ```elixir
 IO.inspect(self(), label: "I am")
@@ -324,9 +330,9 @@ send(A, :crash)
 
 Process.sleep(100)
 
-IO.inspect(:erlang.process_info(a), label: "Final A info")
-IO.inspect(:erlang.process_info(b), label: "Final B info")
-# IO.inspect(:erlang.process_info(c), label: "Final C info")
+IO.inspect(Process.alive?(a), label: "Final A info")
+IO.inspect(Process.alive?(b), label: "Final B info")
+# IO.inspect(Process.alive?(c), label: "Final C info")
 ```
 
 There is an option set a spetial process flag to trap exits. When `trap_exit` process flag is set to true, instread of receiving **exit signal** a process receives a message:
@@ -384,8 +390,8 @@ send(A, :crash)
 
 Process.sleep(100)
 
-IO.inspect(:erlang.process_info(a), label: "Final A info")
-IO.inspect(:erlang.process_info(b), label: "Final B info")
+IO.inspect(Process.alive?(a), label: "Final A info")
+IO.inspect(Process.alive?(b), label: "Final B info")
 ```
 
 ```elixir
