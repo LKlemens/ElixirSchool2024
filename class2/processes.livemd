@@ -47,6 +47,29 @@ spawn(&PidPrinter.print_my_pid/0)
 spawn(PidPrinter, :print_my_pid, ["XD"])
 ```
 
+### Naming processes
+
+Processe can be named so that we do not have to remember thair PIDs and we can reffer to them from anywhere in BEAM (Erlang VM).
+
+```elixir
+execute_fun = fn ->
+  Process.register(self(), :krzys)
+
+  receive do
+    msg -> IO.inspect(msg, label: "Krzys received")
+  end
+end
+
+spawn(execute_fun)
+
+## There is a race condition between process `:krzys` registering 
+## and current process looking up its pid based on it's name.
+## Comment out next line to (possibly) see that.
+Process.sleep(1000)
+
+send(:krzys, "Hello")
+```
+
 ## Comunication
 
 Processes do not share memeory, they are independent and **only** comunicate via messages. All comunication is based on asyncronous communication.
@@ -141,29 +164,6 @@ end
 #     IO.inspect(question, label: "I have received")
 # end
 # flush_fun.(flush_fun)
-```
-
-### Naming processes
-
-Processe can be named so that we do not have to remember thair PIDs and we can reffer to them from anywhere in BEAM (Erlang VM).
-
-```elixir
-execute_fun = fn ->
-  Process.register(self(), :krzys)
-
-  receive do
-    msg -> IO.inspect(msg, label: "Krzys received")
-  end
-end
-
-spawn(execute_fun)
-
-## There is a race condition between process `:krzys` registering 
-## and current process looking up its pid based on it's name.
-## Comment out next line to (possibly) see that.
-Process.sleep(1000)
-
-send(:krzys, "Hello")
 ```
 
 ### The big bang theory example
