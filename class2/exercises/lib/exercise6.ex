@@ -4,7 +4,7 @@ defmodule Exercises.Exercise6 do
      - register it under :world name, 
      - start monitoring :hello process by :world process, 
      - after 1 second send :bad_msg to :hello process
-     - wait for down msg from :hello process
+     - wait for down msg from :hello process and send it to :test process
      - wait for next message
    - spawn a new unregistered process, 
       - wait 1500ms 
