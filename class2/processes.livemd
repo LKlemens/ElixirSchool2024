@@ -2,6 +2,12 @@
 
 ## Processes
 
+### git stash
+
+### git pull
+
+<!-- livebook:{"break_markdown":true} -->
+
 Erlang and Elixir processes are:
 
 * lightweight (grow and shrink dynamically)
@@ -49,7 +55,7 @@ spawn(PidPrinter, :print_my_pid, ["XD"])
 
 ### Naming processes
 
-Processe can be named so that we do not have to remember thair PIDs and we can reffer to them from anywhere in BEAM (Erlang VM).
+Processe can be named so that we do not have to remember their PIDs and we can reffer to them from anywhere in BEAM (Erlang VM).
 
 ```elixir
 execute_fun = fn ->
@@ -70,9 +76,13 @@ Process.sleep(1000)
 send(:krzys, "Hello")
 ```
 
+### Exercise 1 & 2
+
+Visit gosocrative.com and enter room name ELIXIRSCHOOL
+
 ## Comunication
 
-Processes do not share memeory, they are independent and **only** comunicate via messages. All comunication is based on asyncronous communication.
+Processes do not share memeory, they are independent and **only** communicate via messages. All comunication is based on asyncronous communication.
 
 ```elixir
 # sending message
@@ -127,6 +137,12 @@ after
 end
 ```
 
+### Exercise 3 & 4
+
+Visit gosocrative.com and enter room name ELIXIRSCHOOL
+
+## Communication cont.
+
 We can use this block to implement our own `Process.sleep/1` function. And suprrise this is how it is done in the OTP itself: https://github.com/erlang/otp/blob/896518d196cd81ba26cb084827957a93b90220fb/lib/stdlib/src/timer.erl#L237
 
 ```elixir
@@ -166,9 +182,13 @@ end
 # flush_fun.(flush_fun)
 ```
 
+### Exercise 5
+
+Visit gosocrative.com and enter room name ELIXIRSCHOOL
+
 ## Monitors
 
-Monitor is a way of obsering how some other is process doing. When process A monitors process B, and process B crushes, process A gets notified by receiving a message: `{'DOWN', ref, :process, pidB, reason}`. Monitors are unidrectional which means that if A monitors B, B does not know it is monitored.
+Monitor is a way of observing how some other is process doing. When process A monitors process B, and process B crushes, process A gets notified by receiving a message: `{'DOWN', ref, :process, pidB, reason}`. Monitors are unidrectional which means that if A monitors B, B does not know it is monitored.
 
 ```elixir
 ## Cleanup
@@ -219,6 +239,10 @@ end
 # end
 ```
 
+### Excersise 6
+
+Visit gosocrative.com and enter room name ELIXIRSCHOOL
+
 ## Links
 
 When two processes can be linked to each other. If one of the participants of a link terminates, it will send an exit signal to the other participant. The exit signal will contain the exit reason of the terminated participant. Links are bidirectional.
@@ -244,9 +268,7 @@ b =
     Process.register(self(), B)
     IO.inspect({B, self()}, label: "I am")
 
-    A
-    |> Process.whereis()
-    |> Process.link()
+    Process.link(a)
 
     receive do
       _ -> :ok
@@ -257,9 +279,8 @@ b =
 # c = spawn(fn ->
 #   Process.register(self(), C)
 #   IO.inspect({C, self()}, label: "I am")
-#   B
-#   |> Process.whereis()
-#   |> Process.link()
+#
+#   Process.link(b)
 #   receive do
 #     _ -> :ok
 #   end
@@ -277,7 +298,13 @@ IO.inspect(Process.alive?(b), label: "Final B info")
 # IO.inspect(Process.alive?(c), label: "Final C info")
 ```
 
-There is an option set a spetial process flag to trap exits. When `trap_exit` process flag is set to true, instread of receiving **exit signal** a process receives a message:
+### Excersise 7
+
+Visit gosocrative.com and enter room name ELIXIRSCHOOL
+
+<!-- livebook:{"break_markdown":true} -->
+
+There is an option set a special process flag to trap exits. When `trap_exit` process flag is set to true, instread of receiving **exit signal** a process receives a message:
 
 ```elixir
 ## Cleanup
@@ -336,6 +363,12 @@ IO.inspect(Process.alive?(a), label: "Final A info")
 IO.inspect(Process.alive?(b), label: "Final B info")
 ```
 
-```elixir
-# spawn_link(...)
-```
+### Excersise 8 & 9 & 10
+
+Visit gosocrative.com and enter room name ELIXIRSCHOOL
+
+<!-- livebook:{"break_markdown":true} -->
+
+### My email
+
+klemens.lukaszczyk@erlang-solutions.com
