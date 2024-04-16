@@ -5,6 +5,9 @@ defmodule Exercises.Exercise2 do
    returns: pid
   """
   def create_registered_process() do
-    # write your code here
+    spawn(fn ->
+      Process.register(self(), :hello)
+      Process.sleep(1000)
+    end)
   end
 end

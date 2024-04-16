@@ -6,6 +6,20 @@ defmodule Exercises.Exercise5 do
    returns: pid
   """
   def selective_receive() do
-    # write your code here
+    spawn(fn ->
+      Process.register(self(), :hello)
+
+      receive do
+        :second ->
+          IO.inspect("received second")
+          send(:test, :second)
+      end
+
+      receive do
+        :first ->
+          IO.inspect("received first")
+          send(:test, :first)
+      end
+    end)
   end
 end

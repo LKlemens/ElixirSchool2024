@@ -24,6 +24,34 @@ defmodule Exercises.Exercise6 do
 
     Process.register(pid, :hello)
 
-    # write here your code
+    world_pid =
+      spawn(fn ->
+        Process.register(self(), :world)
+        Process.monitor(:hello)
+        Process.sleep(1000)
+        send(:hello, :bad_msg)
+
+        receive do
+          msg ->
+            IO.inspect(msg, label: "down message")
+            send(:test, msg)
+        end
+
+        # wait for next message
+        receive do
+          msg ->
+            msg
+        end
+      end)
+
+    spawn(fn ->
+      Process.sleep(1500)
+
+      if Process.alive?(world_pid) do
+        IO.inspect(":world is alive!")
+      else
+        IO.inspect(":world is dead!")
+      end
+    end)
   end
 end

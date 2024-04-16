@@ -5,6 +5,13 @@ defmodule Exercises.Exercise3 do
    returns: pid
   """
   def wait_and_print() do
-    # write your code here
+    spawn(fn ->
+      Process.register(self(), :hello)
+
+      receive do
+        :ping = msg ->
+          IO.inspect(msg)
+      end
+    end)
   end
 end
