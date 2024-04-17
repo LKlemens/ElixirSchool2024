@@ -1,0 +1,294 @@
+# Class 3 - GenServers and Supervisors
+
+## GenServer
+
+A behaviour module for implementing the server of a client-server relation.
+
+[Read more here](https://hexdocs.pm/elixir/GenServer.html)
+
+OTP is a set of Erlang libraries, which consists of the Erlang runtime system, a number of ready-to-use components mainly written in Erlang, and a set of design principles for Erlang programs. [Learn more about Erlang and OTP.](https://www.erlang.org/doc/system_architecture_intro/sys_arch_intro.html)
+
+```elixir
+defmodule Stack do
+  use GenServer
+
+  # Callbacks
+
+  @impl true
+  def init(stack) do
+    {:ok, stack}
+  end
+
+  @impl true
+  def handle_call(:pop, _from, [head | tail]) do
+    {:reply, head, tail}
+  end
+
+  @impl true
+  def handle_cast({:push, element}, state) do
+    {:noreply, [element | state]}
+  end
+end
+```
+
+```elixir
+# Start the server
+{:ok, pid} = GenServer.start_link(Stack, [:hello]) |> IO.inspect(label: :START_LINK)
+
+# This is the client
+GenServer.call(pid, :pop) |> IO.inspect(label: :POP)
+# => :hello
+
+GenServer.cast(pid, {:push, :world}) |> IO.inspect(label: :PUSH)
+# => :ok
+
+GenServer.call(pid, :pop) |> IO.inspect(label: :POP)
+# => :world
+```
+
+```elixir
+# GenServer.call(pid, :pop)
+# Error
+```
+
+### Exercise 1
+
+* `class3/myapp/lib/myapp/shop_inventory.ex`
+* `class3/myapp/test/exercises/exercise1_test.exs`
+* `mix test --only exercise1`
+
+Fill the implementation of `MyApp.ShopInventory.init/1`, `MyApp.ShopInventory.handle_call/3` and `MyApp.ShopInventory.handle_cast/2`
+
+* `init` should take a list of `MyApp.Item` structs and pass them to the state of the GenServer. It's up to you what the internal state data structure is.
+* `:list_items` should reply with a list of all items in the state
+* `:get_item_by_name` should reply with a single item with a given name or `nil` if it is not present
+* `:create_item` should add a provided item to the state
+* `:delete_item` should delete a provided item from the state
+* You shouldn't modify `MyApp.Item` struct as it can break the tests.
+
+## GenServer Client/Server APIs
+
+```elixir
+defmodule Stack2 do
+  use GenServer
+
+  # Client
+
+  def start_link(initial_stack) when is_list(initial_stack) do
+    GenServer.start_link(__MODULE__, initial_stack)
+  end
+
+  def push(pid, element) do
+    GenServer.cast(pid, {:push, element})
+  end
+
+  def pop(pid) do
+    GenServer.call(pid, :pop)
+  end
+
+  # Server (callbacks)
+
+  @impl true
+  def init(stack) do
+    {:ok, stack}
+  end
+
+  @impl true
+  def handle_call(:pop, _from, [head | tail]) do
+    {:reply, head, tail}
+  end
+
+  @impl true
+  def handle_cast({:push, element}, state) do
+    {:noreply, [element | state]}
+  end
+end
+```
+
+```elixir
+{:ok, pid} = Stack2.start_link([]) |> IO.inspect(label: :START_LINK)
+
+Stack2.push(pid, :hello) |> IO.inspect(label: :PUSH)
+Stack2.pop(pid) |> IO.inspect(label: :POP)
+```
+
+### Exercise 2
+
+* `class3/myapp/lib/myapp/shop_inventory.ex`
+* `class3/myapp/test/exercises/exercise2_test.exs`
+* `mix test --only exercise2`
+
+Fill the implementation of `MyApp.ShopInventory.start_link/1`, `MyApp.ShopInventory.create_item/2`, `MyApp.ShopInventory.list_items/1`, `MyApp.ShopInventory.delete_item/2` and `MyApp.ShopInventory.get_item_by_name/2`
+
+* Use `GenServer.call/cast` to leverage your implementation from Exercise 1
+* `start_link` should allow to initialize our GenServer with a list of items.
+
+## GenServer Name registration
+
+```elixir
+defmodule Stack3 do
+  use GenServer
+
+  # Client
+
+  def start_link(initial_stack) when is_list(initial_stack) do
+    GenServer.start_link(__MODULE__, initial_stack, name: __MODULE__)
+  end
+
+  def push(element) do
+    GenServer.cast(__MODULE__, {:push, element})
+  end
+
+  def pop() do
+    GenServer.call(__MODULE__, :pop)
+  end
+
+  # Callbacks
+
+  @impl true
+  def init(stack) do
+    {:ok, stack}
+  end
+
+  @impl true
+  def handle_call(:pop, _from, [head | tail]) do
+    {:reply, head, tail}
+  end
+
+  @impl true
+  def handle_cast({:push, element}, state) do
+    {:noreply, [element | state]}
+  end
+end
+```
+
+```elixir
+Stack3.start_link([:hello])
+
+Stack3.pop() |> IO.inspect(label: :POP)
+Stack3.push(:world) |> IO.inspect(label: :PUSH)
+Stack3.pop() |> IO.inspect(label: :POP)
+```
+
+### Exercise 3
+
+* `class3/myapp/lib/myapp/shop_inventory.ex`
+* `class3/myapp/test/exercises/exercise3_test.exs`
+* `mix test --only exercise3`
+
+Fill the implementation of `MyApp.ShopInventory.start_link/1`, `MyApp.ShopInventory.create_item/1`, `MyApp.ShopInventory.list_items/0`, `MyApp.ShopInventory.delete_item/1` and `MyApp.ShopInventory.get_item_by_name/1`
+
+* Register your GenServer under the same name as the module, i.e. `MyApp.ShopInventory`.
+
+## Supervisor
+
+* a process which supervises other processes - parent watches over children
+* used to build supervision tree
+
+<!-- livebook:{"break_markdown":true} -->
+
+How to start supervisor:
+
+* define list of children
+* call Supervisor.start_link()
+
+```elixir
+# We need to stop the process we spawned above in order to proceed
+GenServer.stop(Stack3)
+```
+
+```elixir
+children = [
+  # The Stack3 is a child started via Stack3.start_link([:hello])
+  %{
+    id: Stack3,
+    start: {Stack3, :start_link, [[:hello]]}
+  }
+]
+
+# Now we start the supervisor with the children and a strategy
+{:ok, pid} = Supervisor.start_link(children, strategy: :one_for_one)
+
+# After started, we can query the supervisor for information
+Supervisor.count_children(pid)
+Supervisor.which_children(pid)
+# => %{active: 1, specs: 1, supervisors: 0, workers: 1}
+```
+
+```elixir
+Stack3.pop() |> IO.inspect(label: :POP)
+Stack3.push(:world) |> IO.inspect(label: :PUSH)
+Stack3.pop() |> IO.inspect(label: :POP)
+```
+
+```elixir
+Stack3.pop()
+```
+
+```elixir
+Supervisor.stop(pid)
+```
+
+```elixir
+defmodule StackSupervisor do
+  use Supervisor
+
+  def start_link(init_arg) do
+    Supervisor.start_link(__MODULE__, init_arg, name: __MODULE__)
+  end
+
+  @impl true
+  def init(_init_arg) do
+    children = [
+      # GenServer allows us to shorten it
+      {Stack3, [:hello]}
+    ]
+
+    Supervisor.init(children, strategy: :one_for_one)
+  end
+end
+```
+
+```elixir
+StackSupervisor.start_link(:ok)
+Stack3.pop() |> IO.inspect(label: :POP)
+Stack3.push(:world) |> IO.inspect(label: :PUSH)
+Stack3.pop() |> IO.inspect(label: :POP)
+```
+
+### Exercise 4
+
+* `class3/myapp/lib/myapp/supervisor.ex`
+* `class3/myapp/test/exercises/exercise4_test.exs`
+* `mix test --only exercise4`
+
+Fill the `children` list so the supervisor starts and monitors `MyApp.ShopInventory` GenServer from the previous exercises.
+
+## Application
+
+* A way of packacking software in Erlang/OTP.
+* Similar to the concept of libraries but with additional runtime behaviour.
+
+```elixir
+defmodule SampleApp do
+  use Application
+
+  def start(_type, _args) do
+    children = [
+      StackSupervisor
+    ]
+
+    Supervisor.start_link(children, strategy: :one_for_one)
+  end
+end
+```
+
+### Exercise 5
+
+* `class3/myapp/lib/myapp/application.ex`
+* `class3/myapp/test/exercises/exercise5_test.exs`
+* `mix test --only exercise5`
+
+Add your supervisor to the root supervisor in `MyApp.Application` module.
+
+Note: some of the previous tests will start to fail.

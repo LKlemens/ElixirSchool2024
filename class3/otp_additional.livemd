@@ -1,0 +1,174 @@
+# GenServer, Supervisors DYI
+
+## GenServer callbacks
+
+* handle_call/3 - synchronous, receives messages via GenServer.call/3
+* handle_cast/2 - asynchronous, receives messages via GenServer.cast/2
+* handle_info/2 - receives messages from within the system, e.g. from itself
+
+```elixir
+defmodule Periodically do
+  use GenServer
+
+  def start_link(_) do
+    GenServer.start_link(__MODULE__, %{})
+  end
+
+  @impl true
+  def init(state) do
+    # Schedule work to be performed on start
+    schedule_periodic_work(3_000)
+
+    {:ok, state}
+  end
+
+  @impl true
+  def handle_info(:work, state) do
+    # Do the desired work here
+    IO.inspect("In handle info")
+    # Reschedule once more
+    schedule_periodic_work(5_000)
+
+    {:noreply, state}
+  end
+
+  defp schedule_periodic_work(period) do
+    DateTime.utc_now() |> IO.inspect(label: :IN_SCHEDULE_PERIODIC_WORK)
+    Process.send_after(self(), :work, period)
+  end
+end
+```
+
+```elixir
+GenServer.start_link(Periodically, [], name: Periodically)
+```
+
+```elixir
+GenServer.stop(Periodically)
+```
+
+## GenServer message processing
+
+* each GenServer has it's own mailbox
+* messages in mailbox are processed in order
+* large number of messages or long time of processing?
+
+Delegate job to another process!!!
+
+```elixir
+defmodule Stack do
+  use GenServer
+
+  # Callbacks
+
+  @impl true
+  def init(stack) do
+    {:ok, stack}
+  end
+
+  @impl true
+  def handle_call(:pop, _from, [head | tail]) do
+    {:reply, head, tail}
+  end
+
+  def handle_call(:reply_in_one_second, from, state) do
+    spawn(fn ->
+      Process.sleep(1000)
+      GenServer.reply(from, :replied_after_one_second)
+    end)
+
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_cast({:push, element}, state) do
+    {:noreply, [element | state]}
+  end
+end
+```
+
+```elixir
+GenServer.start_link(Stack, [:initial], name: Stack)
+```
+
+```elixir
+spawn(fn ->
+  for i <- 1..25 do
+    GenServer.cast(Stack, {:push, i})
+    GenServer.call(Stack, :pop) |> IO.inspect()
+    Process.sleep(50)
+  end
+end)
+
+GenServer.call(Stack, :reply_in_one_second) |> IO.inspect()
+GenServer.cast(Stack, {:push, :new_value})
+```
+
+## Supervisor configuration
+
+### Max restarts
+
+`:max_restarts` - maximum number of child restarts allowed in a time frame, default: 3
+
+### Max seconds
+
+`:max_seconds` - the time frame in which `:max_restarts` applies, default: 5
+
+### Name
+
+`:name` - a name to register the supervisor process
+
+### Strategies
+
+`:strategy` - the supervision strategy, how to manage crashed children processes
+
+* `:one_for_one` - if a child process terminates, only that process is restarted
+* `one_for_all` - if a child process terminates, all other child processes are terminated and then all child processes are restarted
+* `:rest_for_one` - if a child process terminates, the terminated child process and the rest of the children started AFTER IT are terminated and restarted
+
+## Supervison start, shutdown, restarts
+
+### Supervisor start
+
+We can distinguish following steps on supervisor start:
+
+* traverse all child specifications and start each child in defined order
+* call (typically) `start_link/1` for each child, function MUST return `{:ok, pid}`
+* child process uses `init/1` to start its work.
+
+### Supervisor stop
+
+On supervisor shutdown:
+
+* traverse each children process in REVERSE order
+* send `Process.exit(child_pid, :shutdown)` signal to child
+* await for 5s for child exit, if it doesn't happend send `:kill` signal
+
+### Child restart strategies
+
+Child is restarted depending `:restart` strategy, possible values:
+
+* `:permanent` - child is always restarted
+* `:transient` - child proces is restarted only of it terminates abnormally
+* `:temporary` - child process is never restarted
+
+### Child exit reasons
+
+* `:normal` - standard exit reason, no restart in transient mode, linked processes do not exit
+* `:shutdown` or `{:shutdown, term}`, no restart in transent mode, linked processes exit with same reason unles they're trapping exits
+* any other term - exit is logged, restarts in transient mode, linked processes exit with same reason
+
+**IMPORTANT**
+If supervisor reaches maximum restart intensity it will exit with `:shutdown` reason. In this case the supervisor will only be restarted if its child specification was defined with the `:restart` option set to `:permanent`
+
+## What happens if supervisor crashes?
+
+Short answer - it propagetes errors up the supervision tree
+
+Long answer - if one of the supervisor children crashed and can't be restarted supervisor after reaching `:max_restarts` in `:max_seconds` will crash and send sends signal that it terminated abruptly to its own supervisor, and so on and so on until we reach top of the supervision tree and the whole Application is terminated and tries to restart
+
+## More resources
+
+* [GenServer](https://hexdocs.pm/elixir/GenServer.html)
+* [Supervisor](https://hexdocs.pm/elixir/1.16.2/Supervisor.html)
+* [Application](https://hexdocs.pm/elixir/Application.html)
