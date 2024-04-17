@@ -8,27 +8,6 @@ A behaviour module for implementing the server of a client-server relation.
 
 OTP is a set of Erlang libraries, which consists of the Erlang runtime system, a number of ready-to-use components mainly written in Erlang, and a set of design principles for Erlang programs. [Learn more about Erlang and OTP.](https://www.erlang.org/doc/system_architecture_intro/sys_arch_intro.html)
 
-In Elixir we this functionality is implemented in `Application`, a component implementing some specific functionality with a standardized directory structure, configuration, and life cycle. Applications are loaded, started, and stopped.
-
-```elixir
-defmodule KV do
-  def start_link do
-    Task.start_link(fn -> loop(%{}) end)
-  end
-
-  defp loop(map) do
-    receive do
-      {:get, key, caller} ->
-        send(caller, Map.get(map, key))
-        loop(map)
-
-      {:put, key, value} ->
-        loop(Map.put(map, key, value))
-    end
-  end
-end
-```
-
 ```elixir
 defmodule Stack do
   use GenServer
@@ -54,18 +33,38 @@ end
 
 ```elixir
 # Start the server
-{:ok, pid} = GenServer.start_link(Stack, [:hello])
+{:ok, pid} = GenServer.start_link(Stack, [:hello]) |> IO.inspect(label: :START_LINK)
 
 # This is the client
-GenServer.call(pid, :pop)
+GenServer.call(pid, :pop) |> IO.inspect(label: :POP)
 # => :hello
 
-GenServer.cast(pid, {:push, :world})
+GenServer.cast(pid, {:push, :world}) |> IO.inspect(label: :PUSH)
 # => :ok
 
-GenServer.call(pid, :pop)
+GenServer.call(pid, :pop) |> IO.inspect(label: :POP)
 # => :world
 ```
+
+```elixir
+# GenServer.call(pid, :pop)
+# Error
+```
+
+### Exercise 1
+
+* `class3/myapp/lib/myapp/shop_inventory.ex`
+* `class3/myapp/test/exercises/exercise1_test.exs`
+* `mix test --only exercise1`
+
+Fill the implementation of `MyApp.ShopInventory.init/1`, `MyApp.ShopInventory.handle_call/3` and `MyApp.ShopInventory.handle_cast/2`
+
+* `init` should take a list of `MyApp.Item` structs and pass them to the state of the GenServer. It's up to you what the internal state data structure is.
+* `:list_items` should reply with a list of all items in the state
+* `:get_item_by_name` should reply with a single item with a given name or `nil` if it is not present
+* `:create_item` should add a provided item to the state
+* `:delete_item` should delete a provided item from the state
+* You shouldn't modify `MyApp.Item` struct as it can break the tests.
 
 ## GenServer Client/Server APIs
 
@@ -75,8 +74,8 @@ defmodule Stack2 do
 
   # Client
 
-  def start_link(default) when is_list(default) do
-    GenServer.start_link(__MODULE__, default)
+  def start_link(initial_stack) when is_list(initial_stack) do
+    GenServer.start_link(__MODULE__, initial_stack)
   end
 
   def push(pid, element) do
@@ -113,12 +112,37 @@ Stack2.push(pid, :hello) |> IO.inspect(label: :PUSH)
 Stack2.pop(pid) |> IO.inspect(label: :POP)
 ```
 
+### Exercise 2
+
+* `class3/myapp/lib/myapp/shop_inventory.ex`
+* `class3/myapp/test/exercises/exercise2_test.exs`
+* `mix test --only exercise2`
+
+Fill the implementation of `MyApp.ShopInventory.start_link/1`, `MyApp.ShopInventory.create_item/2`, `MyApp.ShopInventory.list_items/1`, `MyApp.ShopInventory.delete_item/2` and `MyApp.ShopInventory.get_item_by_name/2`
+
+* Use `GenServer.call/cast` to leverage your implementation from Exercise 1
+* `start_link` should allow to initialize our GenServer with a list of items.
+
 ## GenServer Name registration
 
 ```elixir
 defmodule Stack3 do
   use GenServer
 
+  # Client
+
+  def start_link(initial_stack) when is_list(initial_stack) do
+    GenServer.start_link(__MODULE__, initial_stack, name: __MODULE__)
+  end
+
+  def push(element) do
+    GenServer.cast(__MODULE__, {:push, element})
+  end
+
+  def pop() do
+    GenServer.call(__MODULE__, :pop)
+  end
+
   # Callbacks
 
   @impl true
@@ -139,129 +163,29 @@ end
 ```
 
 ```elixir
-GenServer.start_link(Stack3, [:hello], name: Stack3)
+Stack3.start_link([:hello])
 
-GenServer.cast(Stack3, {:push, :world}) |> IO.inspect(label: :PUSH)
-GenServer.call(Stack3, :pop) |> IO.inspect(label: :POP)
+Stack3.pop() |> IO.inspect(label: :POP)
+Stack3.push(:world) |> IO.inspect(label: :PUSH)
+Stack3.pop() |> IO.inspect(label: :POP)
 ```
 
-## GenServer callbacks
+### Exercise 3
 
-* handle_call/3 - synchronous, receives messages via GenServer.call/3
-* handle_cast/2 - asynchronous, receives messages via GenServer.cast/2
-* handle_info/2 - receives messages from within the system, e.g. from itself
+* `class3/myapp/lib/myapp/shop_inventory.ex`
+* `class3/myapp/test/exercises/exercise3_test.exs`
+* `mix test --only exercise3`
 
-```elixir
-defmodule MyApp.Periodically do
-  use GenServer
+Fill the implementation of `MyApp.ShopInventory.start_link/1`, `MyApp.ShopInventory.create_item/1`, `MyApp.ShopInventory.list_items/0`, `MyApp.ShopInventory.delete_item/1` and `MyApp.ShopInventory.get_item_by_name/1`
 
-  def start_link(_) do
-    GenServer.start_link(__MODULE__, %{})
-  end
-
-  @impl true
-  def init(state) do
-    # Schedule work to be performed on start
-    schedule_work(3_000)
-
-    {:ok, state}
-  end
-
-  @impl true
-  def handle_info(:work, state) do
-    # Do the desired work here
-    IO.inspect("In handle info")
-    # Reschedule once more
-    schedule_periodic_work(5_000)
-
-    {:noreply, state}
-  end
-
-  defp schedule_periodic_work(period) do
-    DateTime.utc_now() |> IO.inspect(label: :IN_SCHEDULE_PERIODIC_WORK)
-    # We schedule the work to happen in 2 hours (written in milliseconds).
-    # Alternatively, one might write :timer.hours(2)
-    Process.send_after(self(), :work, period)
-  end
-end
-```
-
-```elixir
-GenServer.start_link(MyApp.Periodically, [], name: MyApp.Periodically)
-```
-
-## GenServer message processing
-
-* each GenServer has it's own mailbox
-* messages in mailbox are processed in order
-* large number of messages or long time of processing?
-
-Delegate job to another process!!!
-
-```elixir
-defmodule Stack do
-  use GenServer
-
-  # Callbacks
-
-  @impl true
-  def init(stack) do
-    {:ok, stack}
-  end
-
-  @impl true
-  def handle_call(:pop, _from, [head | tail]) do
-    {:reply, head, tail}
-  end
-
-  def handle_call(:reply_in_one_second, from, state) do
-    spawn(fn ->
-      Process.sleep(1000)
-      GenServer.reply(from, :replied_after_one_second)
-    end)
-
-    {:noreply, state}
-  end
-
-  @impl true
-  def handle_cast({:push, element}, state) do
-    {:noreply, [element | state]}
-  end
-end
-```
+* Register your GenServer under the same name as the module, i.e. `MyApp.ShopInventory`.
 
 ## Supervisor
 
 * a process which supervises other processes - parent watches over children
 * used to build supervision tree
 
-```elixir
-# Class 2 Counter and Warden
-
-defmodule Counter do
-  use GenServer
-
-  def start_link(arg) when is_integer(arg) do
-    GenServer.start_link(__MODULE__, arg, name: __MODULE__)
-  end
-
-  ## Callbacks
-
-  @impl true
-  def init(counter) do
-    {:ok, counter}
-  end
-
-  @impl true
-  def handle_call(:get, _from, counter) do
-    {:reply, counter, counter}
-  end
-
-  def handle_call({:bump, value}, _from, counter) do
-    {:reply, counter, counter + value}
-  end
-end
-```
+<!-- livebook:{"break_markdown":true} -->
 
 How to start supervisor:
 
@@ -269,11 +193,16 @@ How to start supervisor:
 * call Supervisor.start_link()
 
 ```elixir
+# We need to stop the process we spawned above in order to proceed
+GenServer.stop(Stack3)
+```
+
+```elixir
 children = [
-  # The Counter is a child started via Counter.start_link(0)
+  # The Stack3 is a child started via Stack3.start_link([:hello])
   %{
-    id: Counter,
-    start: {Counter, :start_link, [0]}
+    id: Stack3,
+    start: {Stack3, :start_link, [[:hello]]}
   }
 ]
 
@@ -287,75 +216,79 @@ Supervisor.which_children(pid)
 ```
 
 ```elixir
-GenServer.call(Counter, :get)
-# => 0
-
-GenServer.cast(Counter, {:bump, 3})
-# => 0
-
-GenServer.call(Counter, :get)
-# => 3
+Stack3.pop() |> IO.inspect(label: :POP)
+Stack3.push(:world) |> IO.inspect(label: :PUSH)
+Stack3.pop() |> IO.inspect(label: :POP)
 ```
 
-## Supervisor configuration
+```elixir
+Stack3.pop()
+```
 
-### Max restarts
+```elixir
+Supervisor.stop(pid)
+```
 
-`:max_restarts` - maximum number of child restarts allowed in a time frame, default: 3
+```elixir
+defmodule StackSupervisor do
+  use Supervisor
 
-### Max seconds
+  def start_link(init_arg) do
+    Supervisor.start_link(__MODULE__, init_arg, name: __MODULE__)
+  end
 
-`:max_seconds` - the time frame in which `:max_restarts` applies, default: 5
+  @impl true
+  def init(_init_arg) do
+    children = [
+      # GenServer allows us to shorten it
+      {Stack3, [:hello]}
+    ]
 
-### Name
+    Supervisor.init(children, strategy: :one_for_one)
+  end
+end
+```
 
-`:name` - a name to register the supervisor process
+```elixir
+StackSupervisor.start_link(:ok)
+Stack3.pop() |> IO.inspect(label: :POP)
+Stack3.push(:world) |> IO.inspect(label: :PUSH)
+Stack3.pop() |> IO.inspect(label: :POP)
+```
 
-### Strategies
+### Exercise 4
 
-`:strategy` - the supervision strategy, how to manage crashed children processes
+* `class3/myapp/lib/myapp/supervisor.ex`
+* `class3/myapp/test/exercises/exercise4_test.exs`
+* `mix test --only exercise4`
 
-* `:one_for_one` - if a child process terminates, only that process is restarted
-* `one_for_all` - if a child process terminates, all other child processes are terminated and then all child processes are restarted
-* `:rest_for_one` - if a child process terminates, the terminated child process and the rest of the children started AFTER IT are terminated and restarted
+Fill the `children` list so the supervisor starts and monitors `MyApp.ShopInventory` GenServer from the previous exercises.
 
-## Supervison start, shutdown, restarts
+## Application
 
-### Supervisor start
+* A way of packacking software in Erlang/OTP.
+* Similar to the concept of libraries but with additional runtime behaviour.
 
-We can distinguish following steps on supervisor start:
+```elixir
+defmodule SampleApp do
+  use Application
 
-* traverse all child specifications and start each child in defined order
-* call (typically) `start_link/1` for each child, function MUST return `{:ok, pid}`
-* child process uses `init/1` to start its work.
+  def start(_type, _args) do
+    children = [
+      StackSupervisor
+    ]
 
-### Supervisor stop
+    Supervisor.start_link(children, strategy: :one_for_one)
+  end
+end
+```
 
-On supervisor shutdown:
+### Exercise 5
 
-* traverse each children process in REVERSE order
-* send `Process.exit(child_pid, :shutdown)` signal to child
-* await for 5s for child exit, if it doesn't happend send `:kill` signal
+* `class3/myapp/lib/myapp/application.ex`
+* `class3/myapp/test/exercises/exercise5_test.exs`
+* `mix test --only exercise5`
 
-### Child restart strategies
+Add your supervisor to the root supervisor in `MyApp.Application` module.
 
-Child is restarted depending `:restart` strategy, possible values:
-
-* `:permanent` - child is always restarted
-* `:transient` - child proces is restarted only of it terminates abnormally
-* `:temporary` - child process is never restarted
-
-### Child exit reasons
-
-* `:normal` - standard exit reason, no restart in transient mode, linked processes do not exit
-* `:shutdown` or `{:shutdown, term}`, no restart in transent mode, linked processes exit with same reason unles they're trapping exits
-* any other term - exit is logged, restarts in transient mode, linked processes exit with same reason
-
-**IMPORTANT**
-If supervisor reaches maximum restart intensity it will exit with `:shutdown` reason. In this case the supervisor will only be restarted if its child specification was defined with the `:restart` option set to `:permanent`
-
-## What happens if supervisor crashes?
-
-Short answer - it propagetes errors up the supervision tree
-
-Long answer - if one of the supervisor children crashed and can't be restarted supervisor after reaching `:max_restarts` in `:max_seconds` will crash and send sends signal that it terminated abruptly to its own supervisor, and so on and so on until we reach top of the supervision tree and the whole Application is terminated and tries to restart
+Note: some of the previous tests will start to fail.
