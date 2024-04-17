@@ -6,7 +6,7 @@ defmodule MyApp.ShopInventory do
   # =====EXERCISE 2=====
   # Client API
   def start_link(init_items) do
-    GenServer.start_link(__MODULE__, init_items)
+    GenServer.start_link(__MODULE__, init_items, name: __MODULE__)
   end
 
   def create_item(pid, item) do
@@ -26,20 +26,20 @@ defmodule MyApp.ShopInventory do
   end
 
   # =====EXERCISE 3=====
-  def create_item(_item) do
-    # Your code here
+  def create_item(item) do
+    GenServer.cast(__MODULE__, {:create_item, item})
   end
 
   def list_items() do
-    # Your code here
+    GenServer.call(__MODULE__, :list_items)
   end
 
-  def delete_item(_item) do
-    # Your code here
+  def delete_item(item) do
+    GenServer.cast(__MODULE__, {:delete_item, item})
   end
 
-  def get_item_by_name(_name) do
-    # Your code here
+  def get_item_by_name(name) do
+    GenServer.call(__MODULE__, {:get_item_by_name, name})
   end
 
   # =====EXERCISE 1=====
