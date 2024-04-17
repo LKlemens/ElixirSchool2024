@@ -1,6 +1,8 @@
 defmodule MyApp.ShopInventory do
   use GenServer
 
+  alias MyApp.Item
+
   # =====EXERCISE 2=====
   # Client API
   def start_link(_opts) do
@@ -43,30 +45,32 @@ defmodule MyApp.ShopInventory do
   # =====EXERCISE 1=====
   # Server API
   @impl true
-  def init(_) do
-    {:ok, []}
+  def init(init_items) do
+    {:ok, init_items}
   end
 
   @impl true
-  def handle_call(:list_items, _, state) do
-    {:reply, :ok, state}
+  def handle_call(:list_items, _, items) do
+    {:reply, items, items}
   end
 
-  def handle_call({:get_item_by_name, _name}, _, state) do
-    {:reply, :ok, state}
+  def handle_call({:get_item_by_name, name}, _, items) do
+    item = Enum.find(items, fn %Item{name: n} -> name == n end)
+    {:reply, item, items}
   end
 
   @impl true
-  def handle_cast({:create_item, _item}, state) do
-    {:noreply, state}
+  def handle_cast({:create_item, item}, items) do
+    {:noreply, [item | items]}
   end
 
-  def handle_cast({:delete_item, _item}, state) do
-    {:noreply, state}
+  def handle_cast({:delete_item, item}, items) do
+    new_items = List.delete(items, item)
+    {:noreply, new_items}
   end
 
   # For supervisor testing
-  def handle_cast(:crash, _state) do
+  def handle_cast(:crash, _items) do
     throw(:error)
   end
 end
