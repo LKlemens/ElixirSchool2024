@@ -7,7 +7,7 @@
 * handle_info/2 - receives messages from within the system, e.g. from itself
 
 ```elixir
-defmodule MyApp.Periodically do
+defmodule Periodically do
   use GenServer
 
   def start_link(_) do
@@ -17,7 +17,7 @@ defmodule MyApp.Periodically do
   @impl true
   def init(state) do
     # Schedule work to be performed on start
-    schedule_work(3_000)
+    schedule_periodic_work(3_000)
 
     {:ok, state}
   end
@@ -34,15 +34,17 @@ defmodule MyApp.Periodically do
 
   defp schedule_periodic_work(period) do
     DateTime.utc_now() |> IO.inspect(label: :IN_SCHEDULE_PERIODIC_WORK)
-    # We schedule the work to happen in 2 hours (written in milliseconds).
-    # Alternatively, one might write :timer.hours(2)
     Process.send_after(self(), :work, period)
   end
 end
 ```
 
 ```elixir
-GenServer.start_link(MyApp.Periodically, [], name: MyApp.Periodically)
+GenServer.start_link(Periodically, [], name: Periodically)
+```
+
+```elixir
+GenServer.stop(Periodically)
 ```
 
 ## GenServer message processing
@@ -83,6 +85,23 @@ defmodule Stack do
     {:noreply, [element | state]}
   end
 end
+```
+
+```elixir
+GenServer.start_link(Stack, [:initial], name: Stack)
+```
+
+```elixir
+spawn(fn ->
+  for i <- 1..25 do
+    GenServer.cast(Stack, {:push, i})
+    GenServer.call(Stack, :pop) |> IO.inspect()
+    Process.sleep(50)
+  end
+end)
+
+GenServer.call(Stack, :reply_in_one_second) |> IO.inspect()
+GenServer.cast(Stack, {:push, :new_value})
 ```
 
 ## Supervisor configuration
@@ -148,59 +167,8 @@ Short answer - it propagetes errors up the supervision tree
 
 Long answer - if one of the supervisor children crashed and can't be restarted supervisor after reaching `:max_restarts` in `:max_seconds` will crash and send sends signal that it terminated abruptly to its own supervisor, and so on and so on until we reach top of the supervision tree and the whole Application is terminated and tries to restart
 
+## More resources
 
-## GenServer - Shop Inventory Cache
-
-Implement GenServer for storing shop inventory. You should be able to perform basic CRUD operations (Create, Read, Update, Delete)
-
-TIP: State of the GenServer can be stored as list or map
-
-TIP: You can use `struct`, map or keyword to store product information, example fields: name, price
-
-```elixir
-defmodule ShopInventory do
-  use GenServer
-
-  # Client API
-  def create_item(item) do
-    # Your code here
-  end
-
-  def list_items() do
-    # Your code here
-  end
-
-  def delete_item() do
-    # Your code here
-  end
-
-  def get_item_by_name(name) do
-    # Your code here
-  end
-
-  def start_link(_opts) do
-    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
-  end
-
-  # Server API
-  def init(state) do
-    {:ok, state}
-  end
-
-  def handle_call(_, _, state) do
-    {:reply, _, state}
-  end
-
-  def handle_cast(_, state) do
-    {:noreply, state}
-  end
-end
-```
-
-## Supervisor - Shop Supervisor
-
-Using Shop Inventory GenServer from previous exercise implement Supervisor module with 3 different shop inventories.
-
-## Shop Inventory - Advanced
-
-Using GenServer `ShopInventory` from first exercise instead using GenServer state as storage medium for shop inventory use [ETS](https://elixir-lang.org/getting-started/mix-otp/ets.html)
+* [GenServer](https://hexdocs.pm/elixir/GenServer.html)
+* [Supervisor](https://hexdocs.pm/elixir/1.16.2/Supervisor.html)
+* [Application](https://hexdocs.pm/elixir/Application.html)
