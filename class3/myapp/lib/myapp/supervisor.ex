@@ -8,7 +8,9 @@ defmodule MyApp.Supervisor do
   # =====EXERCISE 4=====
   @impl true
   def init(_init_arg) do
-    children = []
+    children = [
+      {MyApp.ShopInventory, []}
+    ]
 
     Supervisor.init(children, strategy: :one_for_one)
   end
