@@ -1,124 +1,136 @@
-# Learning basics of Elixir Broadway
+### Dependencies
 
-During the fourth class, we will learn about Broadway, which is an Elixir library for a concurrent, multi-stage tool for building data ingestion and data processing pipelines.
+- docker
+- Elixr & Erlang
+- [caddy](https://caddyserver.com/docs/install#static-binaries)
+  brew install caddy
+  sudo apt install caddy
+  choco install caddy
 
-## A step by step work description
+### Agenda
 
-**Assumption**: There is a RabbitMQ running on a local machine with a `test/test` user, like in the same fashion as on previous classes. There is also a queue named `my_queue` defined in RabbitMQ.
+- distributed nodes
+- horde
+- libcluster
+- phoenix live view
 
-Create a new Elixir project `mix new wordle_broadway --sup`.
-Enter the project's directory `cd wordle_broadway`. 
-Get the latest version of broadway_rabbitmq package from [hex](https://hex.pm/packages/broadway_rabbitmq) and add it to the deps list in the mix.exs file.
-Get the dependencies `mix deps.get`.
+### Distributed nodes
 
-Next create a module in a `wordle_broadway/lib/wordle_broadway.ex` file in lib folder:
+To start up distrubuted node we have to set a node name using `-sname/-name`.
+Nodes have to have the same cookie value.
 
-```elixir
-defmodule WordleBroadway do
-  use Broadway
+#### Exmaple commands:
 
-  alias Broadway.Message
+##### To start a new node:
 
-  def start_link(_opts) do
-    Broadway.start_link(__MODULE__,
-      name: WordleBroadway,
-      producer: [
-        module:
-          {BroadwayRabbitMQ.Producer,
-           queue: "my_queue",
-           connection: [
-             host: "localhost",
-             port: 5672,
-             username: "test",
-             password: "test"
-           ],
-           qos: [
-             prefetch_count: 1
-           ]},
-        concurrency: 7
-      ],
-      processors: [
-        default: [
-          concurrency: 5
-        ]
-      ],
-      batchers: [
-        default: [
-          batch_size: 4,
-          batch_timeout: 3000,
-          concurrency: 5
-        ]
-      ]
-    )
-  end
-
-  @impl true
-  def handle_message(_, message, _) do
-    message
-    # TODO add data processing
-    |> Message.update_data(fn data -> data end)
-  end
-
-  @impl true
-  def handle_batch(_, messages, _, _) do
-    list = messages |> Enum.map(fn e -> e.data end)
-    IO.inspect(list, label: "Got batch")
-    messages
-  end
-end
+```
+iex --sname node1@localhost
 ```
 
-and a file `wordle_broadway/lib/data_provider.ex` in the lib folder too:
+##### To connect a node:
 
-```elixir
-defmodule DataProvider do
-  def feed_n_numbers(n) do
-    options = [
-      host: "localhost",
-      port: 5672,
-      username: "test",
-      password: "test"
-    ]
-
-    {:ok, connection} = AMQP.Connection.open(options)
-    {:ok, channel} = AMQP.Channel.open(connection)
-    AMQP.Queue.declare(channel, "my_queue", durable: true)
-
-    Enum.each(1..n, fn _ ->
-      guess_word =
-        1..5
-        |> Enum.to_list()
-        |> Enum.map(fn _ -> Enum.random(?a..?z) end)
-        |> :erlang.list_to_binary()
-
-      AMQP.Basic.publish(channel, "", "my_queue", guess_word)
-    end)
-
-    AMQP.Connection.close(connection)
-  end
-end
+```
+iex(1)> Node.connect("node1@localhost")
+true
 ```
 
-Next go to `wordle_broadway/lib/wordle_broadway/application.ex` and replace children list with: 
-```elixir
-children = [
-      {WordleBroadway, []}
-    ]
+##### To send a message to different node:
+
+```
+iex(1)> send({pid/name, node}, msg)
+msg
 ```
 
-Start Elixir shell `iex -S mix`, you will see an error:
+##### To list connected nodes:
 
-```elixir
-warning: :on_failure should be specified for Broadway topology with name WordleBroadway; assuming :reject_and_requeue. See documentation for valid values: https://hexdocs.pm/broadway_rabbitmq/0.7.2/BroadwayRabbitMQ.Producer.html#module-acking
-  (broadway_rabbitmq 0.7.2) lib/broadway_rabbitmq/producer.ex:436: BroadwayRabbitMQ.Producer.init/1
-  (broadway 1.0.3) lib/broadway/topology/producer_stage.ex:70: Broadway.Topology.ProducerStage.init/1
-  (gen_stage 1.1.2) lib/gen_stage.ex:1731: GenStage.init/1
-  (stdlib 3.17.1) gen_server.erl:423: :gen_server.init_it/2
-  (stdlib 3.17.1) gen_server.erl:390: :gen_server.init_it/6
-  (stdlib 3.17.1) proc_lib.erl:226: :proc_lib.init_p_do_apply/3
 ```
-to fix it we can add `on_failure: :reject,` after `queue: "my_queue",` parameter in the `lib/wordle_broadway/wordle_broadway.ex` file.
+iex(1)> Node.list()
+[]
+```
 
-After fixing that, try running the shell again: `iex -S mix` and run `DataProvider.feed_n_words(15)`.
+##### To print node name:
 
-Notice that the shell will print the 3 batches (each element containing 4 elements) immediately and then after a while (about 3 seconds) the 4th batch with 3 elements will be printed.
+```
+iex(1)> Node.self()
+:nonode@nohost
+```
+
+##### Exercise 1
+
+- Run two nodes - `:node1` and `:node2`
+  - PORT=4005 iex --sname node1@localhost -S mix phx.server
+  - PORT=4006 iex --sname node2@localhost -S mix phx.server
+- Connect those nodes
+- Start `Receiver.start_link()` on node1
+- Start `Receiver.start_link()` on node2
+- Implement `send_msg` function in `phoenix_hello/receiver.ex` file
+- Run test `PhoenixHello.Tests.exercise1()`
+
+##### Exercise 2
+
+- Run two nodes - `:node1` and `:node2`
+- Connect those nodes
+- Start `Receiver.start_link()` on node1
+- Start `Receiver.start_link()` on node2
+- Implement `send_msg_to_all_nodes` function in `phoenix_hello/receiver.ex` file
+- Run test `PhoenixHello.Tests.exercise2()`
+
+### Horde
+
+[Horde](https://github.com/derekkraan/horde) is a library providing distributed registry and supervisor.
+Horde ensures that processes will keep working when nodes or connection fail.
+
+##### Exercise 3
+
+- kill nodes
+- uncomment Horde.Registry & PhoenixHello.ManagerSupervisor in `phoenix_hello/application.ex`
+- Run two nodes - `:node1` and `:node2`
+- Connect those nodes
+- start 1000 random processes `PhoenixHello.ManagerSupervisor.start_random(1000)`
+  - what happend & why?
+- kill one node
+  - what happend & why?
+- start killed node and connect to cluster
+  - what happend & why?
+
+### Libcluster
+
+Automatically forming clusters of Erlang nodes
+
+##### Exercise 4
+
+- setup libcluster configuration in `phoenix_hello/application.ex`
+- run two nodes and check if there are connected automatically `Node.list()`
+
+### Loadbalancing & Horde
+
+##### Exercise 5
+
+- install caddy
+- run caddy `caddy run` in `phoenix_hello` dir
+- start 2 nodes on ports 4005, 4006
+- open https://localhost:8080/hello
+- spawn managers
+- kill node which your user uses
+- check if list of managers disappeard
+- fix it using distributed supervisor in `PhoenixHello.ManagerSupervisor` module
+
+### minimum number of nodes?
+
+### LiveView
+
+##### Exercise 6
+
+- Add CounterLive to Router moduel
+- Implement CounterLive by adding a button which increases counter by one and diplay a counter value
+
+#### Email
+
+klemens.lukaszczyk@erlang-solutions.com
+
+#### References
+
+- [PhoenixLiveView](https://pragprog.com/titles/liveview/programming-phoenix-liveview/) book
+- [Elixir in Action 3rd Edition](https://www.amazon.com/Elixir-Action-Third-Sa%C5%A1a-Juric-ebook/dp/B0CVHVWP9M?ref_=ast_author_dp)
+
+#### [Ankieta](https://docs.google.com/forms/d/e/1FAIpQLScs3lz9a2qJV2cTTzkzwWUp9Qhs4cO31MDo3N43fqxxKloVtA/viewform)
