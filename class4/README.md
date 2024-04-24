@@ -110,7 +110,7 @@ Automatically forming clusters of Erlang nodes
 - run caddy `caddy run` in `phoenix_hello` dir
 - start 2 nodes on ports 4005, 4006
 - open https://localhost:8080/hello
-- caddy problem: localhost:4005/hello
+- caddy problem: localhost:4005/hello   /   localhost:4006/hello
 - spawn managers
 - kill node which your user uses
 - check if list of managers disappeard
