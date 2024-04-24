@@ -30,7 +30,7 @@ iex --sname node1@localhost
 ##### To connect a node:
 
 ```
-iex(1)> Node.connect("node1@localhost")
+iex(1)> Node.connect(:node1@localhost)
 true
 ```
 
