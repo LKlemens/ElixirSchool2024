@@ -2,6 +2,9 @@
 
 Welcome to the Elixir School 2024 Class 1
 
+## Challenge
+https://github.com/pawlooss1/elixir_challenge
+
 ## Goals
 
 During this lecture you will be introduced to basic Elixir syntax together with simple and complex data types.
