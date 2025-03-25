@@ -38,18 +38,18 @@ list = [1, 2, 3]
 reason
 ```
 
-## If / unless
+## If
 
 ```elixir
 if true do
   IO.puts("This works!")
 end
 
-# unless true do
+# if not true do
 #  IO.puts("This will never be seen")
 # end
 
-# unless false do
+# if not false do
 #   IO.puts("This will be seen")
 # end
 
