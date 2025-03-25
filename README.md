@@ -1,9 +1,6 @@
-# Elixir School 2024
+# Elixir School 2025
 
-Welcome to the Elixir School 2024 Class 1
-
-## Challenge
-https://github.com/pawlooss1/elixir_challenge
+Welcome to the Elixir School 2025
 
 ## Goals
 
